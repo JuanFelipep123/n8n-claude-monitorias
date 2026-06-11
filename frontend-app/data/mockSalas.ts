@@ -1,4 +1,4 @@
-import type { Sala, SedeSlug } from '../types/sala'
+import type { Sala, SedeSlug } from '@/components/types/sala'
 
 export const MOCK_SALAS: Record<SedeSlug, Sala[]> = {
   lans: [
