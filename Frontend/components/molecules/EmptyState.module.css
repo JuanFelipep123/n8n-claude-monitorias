@@ -1,0 +1,13 @@
+.wrapper {
+  padding: 2.5rem 1rem;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
+  text-align: center;
+}
+
+.message {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6b7280;
+}

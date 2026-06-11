@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TurnoMonitores — Disponibilidad de Salas (Preview)</title>
+  <meta name="description" content="Vista de disponibilidad de salas de monitoría — preview standalone sin dependencias." />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Base ── */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f1f5f9;
+      color: #111827;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── App header ── */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .app-title {
+      font-size: 1.625rem;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .live-dot {
+      width: 0.625rem;
+      height: 0.625rem;
+      border-radius: 9999px;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+
+    .app-subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Controls bar ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .sede-group {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+
+    .sede-group label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      white-space: nowrap;
+    }
+
+    .sede-select {
+      padding: 0.5rem 2.5rem 0.5rem 0.875rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background-color: #fff;
+      font-size: 0.875rem;
+      color: #111827;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.625rem center;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .sede-select:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+
+    .timestamp {
+      font-size: 0.8125rem;
+      color: #6b7280;
+    }
+
+    /* ── Simulation buttons ── */
+    .sim-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .sim-btn {
+      padding: 0.45rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s, transform 0.1s;
+    }
+
+    .sim-btn:active { transform: scale(0.97); }
+
+    .btn-monitor {
+      background-color: #fef9c3;
+      color: #713f12;
+      border: 1px solid #fde68a;
+    }
+
+    .btn-monitor:hover { background-color: #fef08a; }
+
+    .btn-cierre {
+      background-color: #f3f4f6;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+
+    .btn-cierre:hover { background-color: #e5e7eb; }
+
+    .btn-reset {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .btn-reset:hover { background-color: #a7f3d0; }
+
+    /* ── Fuera de horario banner ── */
+    .banner {
+      display: none;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.875rem 1.25rem;
+      border-radius: 0.75rem;
+      background-color: #f3f4f6;
+      border: 1px solid #d1d5db;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 1.25rem;
+    }
+
+    .banner.visible { display: flex; }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Sala card ── */
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1.25rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid transparent;
+      transition: transform 0.15s, box-shadow 0.15s, background-color 0.3s, border-color 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .card[data-estado="libre"]       { background-color: #d1fae5; border-color: #a7f3d0; }
+    .card[data-estado="en_clase"]    { background-color: #fee2e2; border-color: #fca5a5; }
+    .card[data-estado="con_monitor"] { background-color: #fef9c3; border-color: #fde68a; }
+    .card[data-estado="cerrada"]     { background-color: #f3f4f6; border-color: #e5e7eb; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-nombre {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.3;
+    }
+
+    .badge-externo {
+      flex-shrink: 0;
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background-color: #1e40af;
+      color: #fff;
+    }
+
+    /* ── Estado badge (pill) ── */
+    .badge-estado {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .badge-estado[data-estado="libre"]       { background: #d1fae5; color: #065f46; }
+    .badge-estado[data-estado="en_clase"]    { background: #fee2e2; color: #991b1b; }
+    .badge-estado[data-estado="con_monitor"] { background: #fef9c3; color: #713f12; }
+    .badge-estado[data-estado="cerrada"]     { background: #f3f4f6; color: #374151; }
+
+    /* ── Empty / Error states ── */
+    .empty-state {
+      padding: 2.5rem 1rem;
+      border-radius: 0.75rem;
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.9375rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="app-header">
+      <h1 class="app-title">Disponibilidad de salas</h1>
+      <span class="live-dot" aria-hidden="true"></span>
+    </div>
+    <p class="app-subtitle">TurnoMonitores — Universidad de Caldas · Preview standalone</p>
+    <p id="api-source" style="font-size:0.8125rem; margin-bottom:1.25rem; font-weight:500; color:#713f12;">
+      🔄 Conectando al backend…
+    </p>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="sede-group">
+        <label for="sede-select">Sede</label>
+        <select id="sede-select" class="sede-select">
+          <option value="lans">Sede Lans</option>
+          <option value="orlando-sierra">Sede Orlando Sierra</option>
+        </select>
+      </div>
+      <span class="timestamp" id="timestamp" aria-live="polite"></span>
+    </div>
+
+    <!-- Simulation buttons -->
+    <div class="sim-bar">
+      <button id="btn-simular-monitor" class="sim-btn btn-monitor" type="button">
+        Simular cambio de estado
+      </button>
+      <button id="btn-simular-cierre" class="sim-btn btn-cierre" type="button">
+        Simular fuera de horario
+      </button>
+      <button id="btn-reset" class="sim-btn btn-reset" type="button">
+        Restablecer
+      </button>
+    </div>
+
+    <!-- Banner fuera de horario -->
+    <div class="banner" id="banner-cierre" role="alert">
+      🔒 Sede cerrada — fuera de horario operativo
+    </div>
+
+    <!-- Sala grid -->
+    <div class="grid" id="sala-grid" role="list" aria-label="Disponibilidad de salas"></div>
+
+  </div>
+
+  <script>
+    const ESTADO_LABEL = {
+      libre:       'Libre',
+      en_clase:    'En clase',
+      con_monitor: 'Con monitor',
+      cerrada:     'Cerrada',
+    }
+
+    const MOCK_SALAS = {
+      lans: [
+        { id: '11111111-0000-0000-0000-000000000001', nombre: 'Sala 101', estado: 'libre',       permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000002', nombre: 'Sala 102', estado: 'en_clase',    permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000003', nombre: 'Sala 103', estado: 'con_monitor', permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000004', nombre: 'Sala 104', estado: 'cerrada',     permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000005', nombre: 'Sala 105', estado: 'libre',       permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000006', nombre: 'Sala 106', estado: 'libre',       permiteExternos: true  },
+        { id: '11111111-0000-0000-0000-000000000007', nombre: 'Lab A',    estado: 'libre',       permiteExternos: false },
+        { id: '11111111-0000-0000-0000-000000000008', nombre: 'Lab B',    estado: 'cerrada',     permiteExternos: false },
+      ],
+      'orlando-sierra': [
+        { id: '22222222-0000-0000-0000-000000000001', nombre: 'Sala 201', estado: 'libre',       permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000002', nombre: 'Sala 202', estado: 'en_clase',    permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000003', nombre: 'Sala 203', estado: 'libre',       permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000004', nombre: 'Sala 204', estado: 'con_monitor', permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000005', nombre: 'Sala 205', estado: 'libre',       permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000006', nombre: 'Sala 206', estado: 'cerrada',     permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000007', nombre: 'Sala 207', estado: 'libre',       permiteExternos: true },
+        { id: '22222222-0000-0000-0000-000000000008', nombre: 'Sala 208', estado: 'en_clase',    permiteExternos: true },
+      ],
+    }
+
+    // Deep-clone working copy so simulations don't mutate the source
+    let workingSalas = {}
+    let currentSede = 'lans'
+    let fueraDeHorario = false
+
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj))
+    }
+
+    function resetWorkingCopy() {
+      workingSalas = deepClone(MOCK_SALAS)
+      fueraDeHorario = false
+      document.getElementById('banner-cierre').classList.remove('visible')
+    }
+
+    function updateTimestamp() {
+      const now = new Date()
+      const formatted = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      document.getElementById('timestamp').textContent = 'Actualizado a las ' + formatted
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('sala-grid')
+      const salas = workingSalas[currentSede]
+      const isLans = currentSede === 'lans'
+
+      if (!salas || salas.length === 0) {
+        grid.innerHTML = '<div class="empty-state">No hay salas registradas para esta sede.</div>'
+        return
+      }
+
+      grid.innerHTML = salas.map(sala => {
+        const soloMonitores = isLans && !sala.permiteExternos
+        const extBadge = soloMonitores
+          ? '<span class="badge-externo" title="Acceso restringido a monitores">Solo monitores</span>'
+          : ''
+
+        return `
+          <article class="card" data-id="${sala.id}" data-estado="${sala.estado}" role="listitem" aria-label="${sala.nombre} — ${sala.estado}">
+            <div class="card-header">
+              <span class="card-nombre">${sala.nombre}</span>
+              ${extBadge}
+            </div>
+            <span class="badge-estado" data-estado="${sala.estado}">${ESTADO_LABEL[sala.estado]}</span>
+          </article>
+        `
+      }).join('')
+
+      updateTimestamp()
+    }
+
+    function changeSede(slug) {
+      currentSede = slug
+      fueraDeHorario = false
+      document.getElementById('banner-cierre').classList.remove('visible')
+      renderGrid()
+    }
+
+    // Simulation: change first 'libre' sala to 'con_monitor'
+    function simularCambioEstado() {
+      const salas = workingSalas[currentSede]
+      const target = salas.find(s => s.estado === 'libre')
+      if (!target) return
+      target.estado = 'con_monitor'
+      renderGrid()
+    }
+
+    // Simulation: overwrite all estados to 'cerrada' + show banner
+    function simularFueraDeHorario() {
+      workingSalas[currentSede] = workingSalas[currentSede].map(s => ({ ...s, estado: 'cerrada' }))
+      fueraDeHorario = true
+      document.getElementById('banner-cierre').classList.add('visible')
+      renderGrid()
+    }
+
+    function reset() {
+      resetWorkingCopy()
+      renderGrid()
+    }
+
+    // ── API fetch (intenta conectar al backend; si falla, usa mock) ──
+    const API_BASE = 'http://localhost:3000'
+    let usingRealApi = false
+
+    async function loadFromApi(slug) {
+      try {
+        const res = await fetch(`${API_BASE}/salas/${slug}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        // normaliza el campo permite_externos → permiteExternos si viene snake_case
+        workingSalas[slug] = data.map(s => ({
+          id: s.id,
+          nombre: s.nombre,
+          estado: s.estado,
+          permiteExternos: s.permiteExternos ?? s.permite_externos ?? true,
+          updatedAt: s.updatedAt ?? s.updated_at ?? new Date().toISOString(),
+        }))
+        usingRealApi = true
+        document.getElementById('api-source').textContent = '🟢 Conectado al backend real (localhost:3000)'
+        document.getElementById('api-source').style.color = '#065f46'
+      } catch {
+        usingRealApi = false
+        document.getElementById('api-source').textContent = '🟡 Sin backend — usando datos de prueba'
+        document.getElementById('api-source').style.color = '#713f12'
+      }
+      renderGrid()
+    }
+
+    async function changeSede(slug) {
+      currentSede = slug
+      fueraDeHorario = false
+      document.getElementById('banner-cierre').classList.remove('visible')
+      await loadFromApi(slug)
+    }
+
+    // Init — carga ambas sedes al arrancar
+    resetWorkingCopy()
+    loadFromApi('lans')
+    loadFromApi('orlando-sierra').then(() => renderGrid())
+
+    document.getElementById('sede-select').addEventListener('change', e => changeSede(e.target.value))
+    document.getElementById('btn-simular-monitor').addEventListener('click', simularCambioEstado)
+    document.getElementById('btn-simular-cierre').addEventListener('click', simularFueraDeHorario)
+    document.getElementById('btn-reset').addEventListener('click', () => { resetWorkingCopy(); loadFromApi(currentSede) })
+  </script>
+</body>
+</html>

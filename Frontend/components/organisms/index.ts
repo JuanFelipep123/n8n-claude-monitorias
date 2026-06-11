@@ -1,0 +1,1 @@
+export { SalaGrid } from './SalaGrid'
