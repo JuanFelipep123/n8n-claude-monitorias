@@ -1,0 +1,29 @@
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.libre {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.en_clase {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.con_monitor {
+  background-color: #fef9c3;
+  color: #713f12;
+}
+
+.cerrada {
+  background-color: #f3f4f6;
+  color: #374151;
+}
